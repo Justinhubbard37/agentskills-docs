@@ -6,6 +6,8 @@ Designed for dual-audience utility:
 1. **AI Agent Ingestion & RAG:** High-integrity, deterministic markdown with zero paraphrasing, clear document boundaries, and structured metadata for agent connectivity and retrieval pipelines.
 2. **Human Director Orchestration:** Clean, scanable architecture enabling technical directors to navigate, review, and orchestrate agent capabilities without code-reading friction.
 
+This is a **read-only AgentSkills.io documentation mirror for human-AI collaboration**. Mirrored source documents remain unchanged unless the official published AgentSkills.io documentation changes. AI collaborators should read [`AGENTS.md`](./AGENTS.md) for navigation, authority, progressive-disclosure, and usage rules.
+
 ---
 
 ## Provenance & Verification
@@ -50,7 +52,7 @@ Designed for dual-audience utility:
 For automated RAG pipelines, pipeline indexing, and cache invalidation, refer to [`sources.json`](./sources.json), which provides:
 * Document titles and canonical source URLs
 * Character counts, byte sizes, and line counts
-* SHA-256 checksums for each file
+* Local SHA-256 checksums for each normalized mirror file
 
 ---
 
