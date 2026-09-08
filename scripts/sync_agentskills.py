@@ -44,10 +44,7 @@ class RemoteDocument:
 
 
 def _request_text(url: str, token: str | None = None) -> str:
-    headers = {
-        "User-Agent": USER_AGENT,
-        "Accept": "text/plain, text/markdown, application/json",
-    }
+    headers = {"User-Agent": USER_AGENT, "Accept": "text/plain, text/markdown, application/json"}
     if token:
         headers["Authorization"] = f"Bearer {token}"
     request = Request(url, headers=headers)
@@ -283,7 +280,15 @@ def update_readme_catalog(readme: str, documents: list[dict]) -> str:
         raise RuntimeError("README documentation catalog boundaries were not found")
     before, remainder = readme.split(start_heading, 1)
     _, after = remainder.split(end_heading, 1)
-    return before + start_heading + "\n" + build_readme_catalog(documents) + "\n" + end_heading + after
+    return (
+        before
+        + start_heading
+        + "\n"
+        + build_readme_catalog(documents)
+        + "\n"
+        + end_heading
+        + after
+    )
 
 
 def _document_dicts(documents: list[RemoteDocument]) -> list[dict]:
@@ -308,6 +313,25 @@ def load_manifest(repo_root: Path) -> dict:
         raise RuntimeError(f"Unable to read valid manifest: {path}") from exc
 
 
+def validate_manifest_metrics(repo_root: Path, manifest: dict) -> list[str]:
+    mismatches: list[str] = []
+    for item in manifest.get("documents", []):
+        if not isinstance(item, dict) or not item.get("file_name"):
+            mismatches.append("<invalid-manifest-entry>")
+            continue
+        file_name = item["file_name"]
+        path = repo_root / file_name
+        if not path.is_file():
+            mismatches.append(file_name)
+            continue
+        content = path.read_text(encoding="utf-8")
+        metrics = document_metrics(content)
+        for key in ("local_sha256", "byte_size", "character_count", "line_count"):
+            if item.get(key) != metrics[key]:
+                mismatches.append(f"{file_name}:{key}")
+    return sorted(mismatches)
+
+
 def audit(repo_root: Path, token: str | None = None) -> tuple[dict, list[RemoteDocument], str, str]:
     previous = load_manifest(repo_root)
     llms_text = _request_text(LLMS_URL)
@@ -321,14 +345,16 @@ def audit(repo_root: Path, token: str | None = None) -> tuple[dict, list[RemoteD
         if isinstance(item, dict) and item.get("file_name")
     ]
     diff = compute_diff(repo_root, expected, current_scope)
+    metadata_mismatches = validate_manifest_metrics(repo_root, previous)
     signal_at_capture = previous.get("upstream_docs_commit_at_capture")
     result = {
-        "changed": any(diff.values()),
+        "changed": any(diff.values()) or bool(metadata_mismatches),
         "published_document_count": len(remote_documents),
         "local_manifest_document_count": len(current_scope),
         "changed_files": diff["changed"],
         "added_files": diff["added"],
         "removed_files": diff["removed"],
+        "metadata_mismatches": metadata_mismatches,
         "upstream_docs_commit": upstream_commit,
         "upstream_signal_changed": bool(signal_at_capture and signal_at_capture != upstream_commit),
     }
@@ -362,12 +388,13 @@ def apply_update(
     docs = _document_dicts(remote_documents)
     capture_date = datetime.now(timezone.utc).date().isoformat()
     manifest = build_manifest(previous, docs, upstream_commit, capture_date=capture_date)
-    (repo_root / "sources.json").write_text(
-        json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8", newline="\n"
-    )
+    manifest_text = json.dumps(manifest, indent=2, ensure_ascii=False) + "\n"
+    (repo_root / "sources.json").write_text(manifest_text, encoding="utf-8", newline="\n")
     touched.append("sources.json")
 
-    (repo_root / "00-index.md").write_text(build_index(docs, llms_text), encoding="utf-8", newline="\n")
+    (repo_root / "00-index.md").write_text(
+        build_index(docs, llms_text), encoding="utf-8", newline="\n"
+    )
     touched.append("00-index.md")
 
     if result["added_files"] or result["removed_files"]:
@@ -400,7 +427,12 @@ def main(argv: list[str] | None = None) -> int:
 
         if args.write and result["changed"]:
             result["touched_files"] = apply_update(
-                repo_root, previous, remote_documents, llms_text, upstream_commit, result
+                repo_root,
+                previous,
+                remote_documents,
+                llms_text,
+                upstream_commit,
+                result,
             )
         elif args.write:
             result["touched_files"] = []
