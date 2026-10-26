@@ -1,7 +1,7 @@
 {
   "repository": "agentskills-docs",
   "mirror_type": "derived_snapshot",
-  "retrieval_date": "2026-09-06",
+  "retrieval_date": "2026-10-26",
   "source_domain": "https://agentskills.io",
   "scope_source": "https://agentskills.io/llms.txt",
   "upstream_repository": "https://github.com/agentskills/agentskills",
@@ -21,43 +21,43 @@
       "title": "Agent Skills Overview",
       "source_url": "https://agentskills.io/home",
       "canonical_md_url": "https://agentskills.io/home.md",
-      "description": "Standardized capability expansion framework and ecosystem overview for AI agents.",
-      "local_sha256": "b5d923bf9d328c805924092cd91272d08cb3ac8bb7db82f8458d30d536c31033",
-      "byte_size": 26393,
-      "character_count": 26343,
-      "line_count": 463
+      "description": "A standardized way to give AI agents new capabilities and expertise.",
+      "local_sha256": "a7aaaa2b4821a89b8a69aa11d19d9c565c01e0c622ee04c24997328a4c0ff621",
+      "byte_size": 3087,
+      "character_count": 3051,
+      "line_count": 60
     },
     {
       "file_name": "specification.md",
       "title": "Specification",
       "source_url": "https://agentskills.io/specification",
       "canonical_md_url": "https://agentskills.io/specification.md",
-      "description": "The complete format specification, directory structure, frontmatter schemas, and validation rules.",
-      "local_sha256": "747b9bfd740d176b4d5aa87cf4ca2ef2f1e4c91de2d955ae9e2237c2c4bcc282",
-      "byte_size": 8028,
-      "character_count": 7998,
-      "line_count": 272
+      "description": "The complete format specification for Agent Skills.",
+      "local_sha256": "e26e19105f7c4af17c1ddba31669befd8a18eb79620ddac5d7e29c37b2d39316",
+      "byte_size": 7479,
+      "character_count": 7449,
+      "line_count": 258
     },
     {
       "file_name": "clients.md",
       "title": "Client Showcase",
       "source_url": "https://agentskills.io/clients",
       "canonical_md_url": "https://agentskills.io/clients.md",
-      "description": "Full directory of agent tools and platforms supporting the Agent Skills standard (46 clients).",
-      "local_sha256": "d764bb42a7980789c4ae3e2f4b80d0dcb4719a9bd9105cf376779a8d4ce7db7b",
-      "byte_size": 25322,
-      "character_count": 25308,
-      "line_count": 436
+      "description": "Agent products that support the Agent Skills format.",
+      "local_sha256": "c13b65e81c8b9c9d6f5d3fe2a01dc61171e6f6b6f79594ec351660b49c71ac26",
+      "byte_size": 147,
+      "character_count": 147,
+      "line_count": 9
     },
     {
       "file_name": "skill-creation-quickstart.md",
       "title": "Quickstart",
       "source_url": "https://agentskills.io/skill-creation/quickstart",
       "canonical_md_url": "https://agentskills.io/skill-creation/quickstart.md",
-      "description": "Step-by-step walkthrough for building a first Agent Skill and testing in VS Code.",
-      "local_sha256": "a523ef9439ce63f48762d739ccfc0d2f4db5b3583bd5d53217803fb6254a255f",
-      "byte_size": 3894,
-      "character_count": 3868,
+      "description": "Create your first Agent Skill and see it work in VS Code.",
+      "local_sha256": "8cfba15b670a7b46ee4c61ae107e50f1a42e9f3fea2c0ce8d06367149924cf06",
+      "byte_size": 3963,
+      "character_count": 3937,
       "line_count": 81
     },
     {
@@ -65,10 +65,10 @@
       "title": "Best practices for skill creators",
       "source_url": "https://agentskills.io/skill-creation/best-practices",
       "canonical_md_url": "https://agentskills.io/skill-creation/best-practices.md",
-      "description": "Scoping guidelines, token calibration, progressive disclosure, and task execution architecture.",
-      "local_sha256": "daa03f14ef23b0fed301278c297b274fe895819373aaf07dfc5d989e28f146bb",
-      "byte_size": 14751,
-      "character_count": 14703,
+      "description": "How to write skills that are well-scoped and calibrated to the task.",
+      "local_sha256": "7c2e17201f1f66ba8e59ff0237711f93923749fbc44fa9222a8717c444030952",
+      "byte_size": 14947,
+      "character_count": 14899,
       "line_count": 275
     },
     {
@@ -76,10 +76,10 @@
       "title": "Optimizing skill descriptions",
       "source_url": "https://agentskills.io/skill-creation/optimizing-descriptions",
       "canonical_md_url": "https://agentskills.io/skill-creation/optimizing-descriptions.md",
-      "description": "Trigger reliability, negative constraints, eval queries, and context optimization.",
-      "local_sha256": "64f7a62a15288726304a5e693dc92e881f17a6246d0593bbccc277ea7a32f6eb",
-      "byte_size": 13203,
-      "character_count": 13145,
+      "description": "How to improve your skill's description so it triggers reliably on relevant prompts.",
+      "local_sha256": "7310ecea8f6fb4e279602db1181785533f8950dd3af4b8955fa63ebc7ec1a8c1",
+      "byte_size": 13299,
+      "character_count": 13241,
       "line_count": 194
     },
     {
@@ -87,10 +87,10 @@
       "title": "Evaluating skill output quality",
       "source_url": "https://agentskills.io/skill-creation/evaluating-skills",
       "canonical_md_url": "https://agentskills.io/skill-creation/evaluating-skills.md",
-      "description": "Eval-driven iteration, synthetic test generation, benchmark scoring, and quality gates.",
-      "local_sha256": "9607cb6fbd816d6dedddca063a37ab937441979f8d900cbe34e3ffca92b39522",
-      "byte_size": 16847,
-      "character_count": 16601,
+      "description": "How to test whether your skill produces good outputs using eval-driven iteration.",
+      "local_sha256": "b660dee918a871aa6e239edbf88fda6591e2b04e30d547e29e747245cd45f011",
+      "byte_size": 16863,
+      "character_count": 16617,
       "line_count": 298
     },
     {
@@ -98,21 +98,21 @@
       "title": "Using scripts in skills",
       "source_url": "https://agentskills.io/skill-creation/using-scripts",
       "canonical_md_url": "https://agentskills.io/skill-creation/using-scripts.md",
-      "description": "Bundling executable scripts, environment management, execution environments, and CLI tooling.",
-      "local_sha256": "87dd41fe44c76b42762ada75db4e8c1e9c9bc0abb14c8217402c45bbc882ac4f",
-      "byte_size": 12629,
-      "character_count": 12595,
-      "line_count": 306
+      "description": "How to run commands and bundle executable scripts in your skills.",
+      "local_sha256": "b97f0565ccb616610c1b39ce1b821d6c69342bfa9f27184b2808535039ac04d5",
+      "byte_size": 11964,
+      "character_count": 11930,
+      "line_count": 302
     },
     {
       "file_name": "client-implementation-adding-skills-support.md",
       "title": "How to add skills support to your agent",
       "source_url": "https://agentskills.io/client-implementation/adding-skills-support",
       "canonical_md_url": "https://agentskills.io/client-implementation/adding-skills-support.md",
-      "description": "Integration guide for tool builders, runtime discovery, skill execution, and prompt injection.",
-      "local_sha256": "dd54296e3f4e6acfe40132a3e4c73eb481e91e0c255948ed62f15a76b55eeed5",
-      "byte_size": 20799,
-      "character_count": 20693,
+      "description": "A guide for adding Agent Skills support to an AI agent or development tool.",
+      "local_sha256": "a0ddf80b8ab4e9c186bee054ed5c860becd100d12bfce082f9dd09995d9359b3",
+      "byte_size": 20347,
+      "character_count": 20241,
       "line_count": 335
     }
   ]
