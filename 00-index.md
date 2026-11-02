@@ -1,7 +1,7 @@
 # agentskills.io Documentation Bundle — Index
 
 Complete verbatim extraction of the agentskills.io documentation domain.
-Source of scope: https://agentskills.io/llms.txt (cross-checked against /sitemap.xml and a full internal-link crawl; all three agree on the same 9 pages).
+Source of scope: https://agentskills.io/llms.txt (cross-checked against /sitemap.xml and a full internal-link crawl at the original capture).
 
 | # | Page title | Source URL | Local file |
 | --- | --- | --- | --- |
@@ -19,9 +19,9 @@ Total: 9 documentation pages + this index.
 
 ## Notes
 
-- Each file begins with `# Source: <original URL>`, followed by the page's verbatim content exactly as served by the site's canonical markdown endpoint (the `.md` URL listed in the site's own llms.txt).
-- Only one piece of non-content boilerplate was removed: the site-wide 3-line 'Documentation Index → llms.txt' callout that the server prepends to every page. No substantive content was altered.
-- The `home` and `clients` pages render their client-logo grids in randomized order on every HTML page load (the site's own `LogoCarousel`/`ClientShowcase` components shuffle entries client-side). The canonical markdown endpoints are deterministic and were used as the authoritative source; both pages list the same 46 client integrations.
+- Each file begins with `# Source: <original URL>`, followed by the page's canonical Markdown content.
+- The non-substantive Mintlify `Documentation Index → llms.txt` AI-navigation banner is removed during normalization; no substantive content is rewritten.
+- Canonical `.md` endpoints are authoritative for this mirror rather than rendered HTML.
 
 ## Appendix: llms.txt (as served at https://agentskills.io/llms.txt)
 
