@@ -10,9 +10,9 @@ In this tutorial, you'll create a skill that gives an agent the capability to ro
 
 * [VS Code](https://code.visualstudio.com/) with [GitHub Copilot](https://marketplace.visualstudio.com/items?itemName=GitHub.copilot)
 
-<Note>
-  This tutorial uses VS Code, but Agent Skills are an open format. The same skill works in any compatible agent, including Claude Code and OpenAI Codex.
-</Note>
+> [!NOTE]
+>
+> This tutorial uses VS Code, but Agent Skills are an open format. The same skill works in any compatible agent, including Claude Code and OpenAI Codex.
 
 ## Create the skill
 
@@ -55,9 +55,9 @@ That's it — one file, under 20 lines. Here's what each part does:
 
 The agent should activate the `roll-dice` skill. It may ask for permission to run a terminal command — allow it. It will run the command and return a random number between 1 and 20.
 
-<Note>
-  Tool-use reliability varies across models — some follow skill instructions and run commands consistently, while others may attempt to answer on their own. If the agent responds without running a terminal command, try selecting a different model from the model dropdown.
-</Note>
+> [!NOTE]
+>
+> Tool-use reliability varies across models — some follow skill instructions and run commands consistently, while others may attempt to answer on their own. If the agent responds without running a terminal command, try selecting a different model from the model dropdown.
 
 ## How it works
 
@@ -75,7 +75,7 @@ This process uses **progressive disclosure** to let the agent access many skills
 
 You've created a working Agent Skill. From here:
 
-* **[Best practices](/skill-creation/best-practices)** — How to write skills that are well-scoped and effective.
-* **[Optimizing skill descriptions](/skill-creation/optimizing-descriptions)** — Test and improve your skill's description so it activates on the right prompts.
-* **[Specification](/specification)** — The complete format reference for `SKILL.md` files.
+* **[Best practices](https://agentskills.io/skill-creation/best-practices.md)** — How to write skills that are well-scoped and effective.
+* **[Optimizing skill descriptions](https://agentskills.io/skill-creation/optimizing-descriptions.md)** — Test and improve your skill's description so it activates on the right prompts.
+* **[Specification](https://agentskills.io/specification.md)** — The complete format reference for `SKILL.md` files.
 * **[Example skills](https://github.com/anthropics/skills)** — Browse real-world skills on GitHub.

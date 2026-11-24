@@ -13,17 +13,17 @@ The core integration is the same regardless of your agent's architecture. The im
 
 The guide notes where these differences matter. You don't need to support every scenario — follow the path that fits your agent.
 
-**Prerequisites**: Familiarity with the [Agent Skills specification](/specification), which defines the `SKILL.md` file format, frontmatter fields, and directory conventions.
+**Prerequisites**: Familiarity with the [Agent Skills specification](https://agentskills.io/specification.md), which defines the `SKILL.md` file format, frontmatter fields, and directory conventions.
 
 ## The core principle: progressive disclosure
 
 Every skills-compatible agent follows the same three-tier loading strategy:
 
-| Tier            | What's loaded               | When                                 | Token cost                  |
-| --------------- | --------------------------- | ------------------------------------ | --------------------------- |
-| 1. Catalog      | Name + description          | Session start                        | \~50-100 tokens per skill   |
-| 2. Instructions | Full `SKILL.md` body        | When the skill is activated          | \<5000 tokens (recommended) |
-| 3. Resources    | Scripts, references, assets | When the instructions reference them | Varies                      |
+| Tier | What's loaded | When | Token cost |
+| - | - | - | - |
+| 1. Catalog | Name + description | Session start | \~50-100 tokens per skill |
+| 2. Instructions | Full `SKILL.md` body | When the skill is activated | \<5000 tokens (recommended) |
+| 3. Resources | Scripts, references, assets | When the instructions reference them | Varies |
 
 The model sees the catalog from the start, so it knows what skills are available. When it decides a skill is relevant, it loads the full instructions. If those instructions reference supporting files, the model loads them individually as needed.
 
@@ -44,18 +44,18 @@ Other scopes are possible too — for example, organization-wide skills deployed
 
 Within each scope, consider scanning both a **client-specific directory** and the **`.agents/skills/` convention**:
 
-| Scope   | Path                               | Purpose                       |
-| ------- | ---------------------------------- | ----------------------------- |
+| Scope | Path | Purpose |
+| - | - | - |
 | Project | `<project>/.<your-client>/skills/` | Your client's native location |
-| Project | `<project>/.agents/skills/`        | Cross-client interoperability |
-| User    | `~/.<your-client>/skills/`         | Your client's native location |
-| User    | `~/.agents/skills/`                | Cross-client interoperability |
+| Project | `<project>/.agents/skills/` | Cross-client interoperability |
+| User | `~/.<your-client>/skills/` | Your client's native location |
+| User | `~/.agents/skills/` | Cross-client interoperability |
 
 The `.agents/skills/` paths have emerged as a widely-adopted convention for cross-client skill sharing. While the Agent Skills specification does not mandate where skill directories live (it only defines what goes inside them), scanning `.agents/skills/` means skills installed by other compliant clients are automatically visible to yours, and vice versa.
 
-<Note>
-  Some implementations also scan `.claude/skills/` (both project-level and user-level) for pragmatic compatibility, since many existing skills are installed there. Other additional locations include ancestor directories up to the git root (useful for monorepos), [XDG](https://specifications.freedesktop.org/basedir-spec/latest/) config directories, and user-configured paths.
-</Note>
+> [!NOTE]
+>
+> Some implementations also scan `.claude/skills/` (both project-level and user-level) for pragmatic compatibility, since many existing skills are installed there. Other additional locations include ancestor directories up to the git root (useful for monorepos), [XDG](https://specifications.freedesktop.org/basedir-spec/latest/) config directories, and user-configured paths.
 
 ### What to scan for
 
@@ -112,7 +112,7 @@ A `SKILL.md` file has two parts: YAML frontmatter between `---` delimiters, and 
 2. Parse the YAML block between them. Extract `name` and `description` (required), plus any optional fields.
 3. Everything after the closing `---`, trimmed, is the skill's body content.
 
-See the [specification](/specification) for the full set of frontmatter fields and their constraints.
+See the [specification](https://agentskills.io/specification.md) for the full set of frontmatter fields and their constraints.
 
 ### Handling malformed YAML
 
@@ -136,19 +136,19 @@ Warn on issues but still load the skill when possible:
 
 Record diagnostics so they can be surfaced to the user (in a debug command, log file, or UI), but don't block skill loading on cosmetic issues.
 
-<Note>
-  The [specification](/specification) defines strict constraints on the `name` field (matching the parent directory, character set, max length). The lenient approach above deliberately relaxes these to improve compatibility with skills authored for other clients.
-</Note>
+> [!NOTE]
+>
+> The [specification](https://agentskills.io/specification.md) defines strict constraints on the `name` field (matching the parent directory, character set, max length). The lenient approach above deliberately relaxes these to improve compatibility with skills authored for other clients.
 
 ### What to store
 
 At minimum, each skill record needs three fields:
 
-| Field         | Description                          |
-| ------------- | ------------------------------------ |
-| `name`        | From frontmatter                     |
-| `description` | From frontmatter                     |
-| `location`    | Absolute path to the `SKILL.md` file |
+| Field | Description |
+| - | - |
+| `name` | From frontmatter |
+| `description` | From frontmatter |
+| `location` | Absolute path to the `SKILL.md` file |
 
 Store these in an in-memory map keyed by `name` for fast lookup during activation.
 
@@ -251,9 +251,9 @@ Two implementation patterns:
 * Enforce permissions or prompt for user consent
 * Track activation for analytics
 
-<Tip>
-  If you use a dedicated activation tool, constrain the `name` parameter to the set of valid skill names (e.g., as an enum in the tool schema). This prevents the model from hallucinating nonexistent skill names. If no skills are available, don't register the tool at all.
-</Tip>
+> [!TIP]
+>
+> If you use a dedicated activation tool, constrain the `name` parameter to the set of valid skill names (e.g., as an enum in the tool schema). This prevents the model from hallucinating nonexistent skill names. If no skills are available, don't register the tool at all.
 
 ### User-explicit activation
 
@@ -265,7 +265,7 @@ An autocomplete widget (listing available skills as the user types) can also mak
 
 When a skill is activated, the model receives the skill's instructions. Two options for what exactly that content looks like:
 
-**Full file**: The model sees the entire `SKILL.md` including YAML frontmatter. This is the natural outcome with file-read activation, where the model reads the raw file. It's also a valid choice for dedicated tools. The frontmatter may contain fields useful at activation time — for example, [`compatibility`](/specification#compatibility-field) notes environment requirements that could inform how the model executes the skill's instructions.
+**Full file**: The model sees the entire `SKILL.md` including YAML frontmatter. This is the natural outcome with file-read activation, where the model reads the raw file. It's also a valid choice for dedicated tools. The frontmatter may contain fields useful at activation time — for example, [`compatibility`](https://agentskills.io/specification#compatibility-field) notes environment requirements that could inform how the model executes the skill's instructions.
 
 **Body only (frontmatter stripped)**: The harness parses and removes the YAML frontmatter, returning only the markdown instructions. Among existing implementations with dedicated activation tools, most take this approach — stripping the frontmatter after extracting `name` and `description` during discovery.
 
