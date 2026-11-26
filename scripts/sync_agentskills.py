@@ -80,6 +80,9 @@ def parse_llms(text: str) -> list[dict[str, str]]:
     urls = [item["canonical_md_url"] for item in documents]
     if len(urls) != len(set(urls)):
         raise RuntimeError("Duplicate canonical documentation URLs found in llms.txt")
+    names = [item["file_name"] for item in documents]
+    if len(names) != len(set(names)):
+        raise RuntimeError("Canonical documentation paths collide in the local mirror")
     return documents
 
 
@@ -87,8 +90,8 @@ def local_filename(canonical_md_url: str) -> str:
     if not canonical_md_url.startswith(f"{SOURCE_DOMAIN}/") or not canonical_md_url.endswith(".md"):
         raise ValueError(f"Unsupported canonical documentation URL: {canonical_md_url}")
     relative = canonical_md_url[len(SOURCE_DOMAIN) + 1 : -3]
-    if not relative or relative.startswith("/") or ".." in relative.split("/"):
-        raise ValueError(f"Unsafe documentation path: {canonical_md_url}")
+    if not re.fullmatch(r"[a-z0-9][a-z0-9_-]*(?:/[a-z0-9][a-z0-9_-]*)*", relative):
+        raise RuntimeError(f"Unsafe or unsupported documentation path: {canonical_md_url}")
     return relative.replace("/", "-") + ".md"
 
 
@@ -332,11 +335,137 @@ def validate_manifest_metrics(repo_root: Path, manifest: dict) -> list[str]:
     return sorted(mismatches)
 
 
+# Conservative preservation gate. A source hash is corroboration, not proof
+# that a published export faithfully represents the source. Ambiguity is held
+# for human review; never advance a shared capture commit on a partial batch.
+UPSTREAM_TREE_API = "https://api.github.com/repos/agentskills/agentskills/git/trees/"
+MIN_RETAINED_RATIO = 0.90
+DYNAMIC_PAGES = {"home.md", "clients.md"}
+
+
+def fetch_upstream_tree(commit: str, token: str | None = None) -> dict[str, str]:
+    if not isinstance(commit, str) or not re.fullmatch(r"[0-9a-f]{40}", commit):
+        raise RuntimeError("Missing or invalid upstream capture commit")
+    try:
+        payload = json.loads(_request_text(UPSTREAM_TREE_API + commit + "?recursive=1", token))
+        if payload.get("truncated") is not False:
+            raise RuntimeError("Incomplete upstream source tree")
+        tree = {entry["path"]: entry["sha"] for entry in payload["tree"]
+                if entry["type"] == "blob" and entry["path"].startswith("docs/")}
+        if not tree or any(not re.fullmatch(r"[0-9a-f]{40}", sha) for sha in tree.values()):
+            raise RuntimeError("Invalid upstream documentation source tree")
+        return tree
+    except (ValueError, KeyError, TypeError, AttributeError) as exc:
+        raise RuntimeError("Unable to validate upstream source tree") from exc
+
+
+def source_paths(canonical_url: str) -> tuple[str, ...]:
+    name = local_filename(canonical_url)
+    relative = canonical_url[len(SOURCE_DOMAIN) + 1 : -3]
+    page = "docs/" + relative + ".mdx"
+    if name in DYNAMIC_PAGES:
+        return (page, "docs/snippets/clients.jsx")
+    return (page,)
+
+
+def preservation_gate(
+    repo_root: Path,
+    previous: dict,
+    remote_documents: list[RemoteDocument],
+    diff: dict[str, list[str]],
+    metadata_mismatches: list[str],
+    before: dict[str, str],
+    after: dict[str, str],
+) -> dict:
+    blockers: list[str] = []
+    classifications: dict[str, str] = {}
+    old_docs = {item["file_name"]: item for item in previous["documents"]}
+    incoming = {doc.file_name: doc for doc in remote_documents}
+    if metadata_mismatches:
+        blockers.append("Local manifest integrity mismatch; do not overwrite the accepted snapshot.")
+    for name in diff["removed"]:
+        classifications[name] = "scope_removed"
+        blockers.append(f"{name}: published page missing; deletion requires explicit review.")
+    for name in diff["added"]:
+        classifications[name] = "scope_added"
+        blockers.append(f"{name}: new page requires scope and navigation review.")
+    for name in sorted(old_docs.keys() & incoming.keys()):
+        doc = incoming[name]
+        old = old_docs[name]
+        if old.get("canonical_md_url") != doc.canonical_md_url:
+            classifications[name] = "source_mapping_changed"
+            blockers.append(f"{name}: source URL changed; verify mapping.")
+            continue
+        paths = source_paths(doc.canonical_md_url)
+        if any(path not in before or path not in after for path in paths):
+            classifications[name] = "source_evidence_missing"
+            blockers.append(f"{name}: required upstream source evidence missing.")
+            continue
+        source_changed = any(before[path] != after[path] for path in paths)
+        export_changed = name in diff["changed"]
+        if not export_changed:
+            classifications[name] = "source_changed_export_unchanged" if source_changed else "unchanged"
+            if source_changed:
+                blockers.append(f"{name}: source changed but export did not; possible publication lag.")
+            continue
+        # Never treat the absence of a local file as permission to regenerate it.
+        path = repo_root / name
+        if not path.is_file():
+            classifications[name] = "local_file_missing"
+            blockers.append(f"{name}: accepted local file missing.")
+            continue
+        old_text = path.read_text(encoding="utf-8")
+        new_text = doc.content
+        old_size = len(old_text.encode("utf-8"))
+        new_size = len(new_text.encode("utf-8"))
+        # A missing heading or substantial byte loss is a conservative review
+        # trigger, not a semantic proof of truncation.
+        old_headings = set(re.findall(r"^#{2,6} +(.+?) *$", old_text, re.MULTILINE))
+        new_headings = set(re.findall(r"^#{2,6} +(.+?) *$", new_text, re.MULTILINE))
+        body = new_text.split("\n\n", 1)[-1]
+        if (not re.search(r"^# +\S", body, re.MULTILINE)
+                or new_size < old_size * MIN_RETAINED_RATIO
+                or old_headings - new_headings):
+            classifications[name] = "possible_content_loss"
+            blockers.append(f"{name}: incomplete export or material reduction; preserve accepted copy.")
+        elif not source_changed:
+            classifications[name] = "uncorroborated_export_drift"
+            blockers.append(f"{name}: export differs but upstream source is unchanged.")
+        elif name in DYNAMIC_PAGES:
+            classifications[name] = "dynamic_export_review"
+            blockers.append(f"{name}: source-backed dynamic page needs manual completeness review.")
+        else:
+            classifications[name] = "source_backed_candidate"
+    changed = any(diff.values()) or bool(metadata_mismatches)
+    return {
+        "preservation_classifications": classifications,
+        "preservation_blockers": blockers,
+        "proposal_allowed": changed and not blockers,
+    }
+
+
 def audit(repo_root: Path, token: str | None = None) -> tuple[dict, list[RemoteDocument], str, str]:
     previous = load_manifest(repo_root)
+    entries = previous.get("documents")
+    if not isinstance(entries, list) or not entries:
+        raise RuntimeError("Missing accepted document inventory")
+    try:
+        names = [entry["file_name"] for entry in entries]
+        if (len(names) != len(set(names))
+                or previous.get("total_documentation_pages") != len(names)
+                or any(local_filename(entry["canonical_md_url"]) != entry["file_name"]
+                       for entry in entries)):
+            raise RuntimeError("Invalid accepted document inventory")
+    except (KeyError, TypeError, ValueError) as exc:
+        raise RuntimeError("Invalid accepted document inventory") from exc
+    signal_at_capture = previous.get("upstream_docs_commit_at_capture")
+    upstream_commit = fetch_upstream_docs_commit(token=token)
+    before = fetch_upstream_tree(signal_at_capture, token)
+    after = before if signal_at_capture == upstream_commit else fetch_upstream_tree(upstream_commit, token)
     llms_text = _request_text(LLMS_URL)
     remote_documents = fetch_remote_documents(llms_text)
-    upstream_commit = fetch_upstream_docs_commit(token=token)
+    if fetch_upstream_docs_commit(token=token) != upstream_commit:
+        raise RuntimeError("Upstream docs changed during retrieval; retry without writing")
 
     expected = {doc.file_name: doc.content for doc in remote_documents}
     current_scope = [
@@ -346,8 +475,9 @@ def audit(repo_root: Path, token: str | None = None) -> tuple[dict, list[RemoteD
     ]
     diff = compute_diff(repo_root, expected, current_scope)
     metadata_mismatches = validate_manifest_metrics(repo_root, previous)
-    signal_at_capture = previous.get("upstream_docs_commit_at_capture")
+    preservation = preservation_gate(repo_root, previous, remote_documents, diff, metadata_mismatches, before, after)
     result = {
+        **preservation,
         "changed": any(diff.values()) or bool(metadata_mismatches),
         "published_document_count": len(remote_documents),
         "local_manifest_document_count": len(current_scope),
@@ -372,18 +502,15 @@ def apply_update(
     if os.environ.get("GITHUB_ACTIONS") != "true" or os.environ.get("AGENTSKILLS_SYNC_WRITE") != "1":
         raise RuntimeError("Write mode is allowed only in the controlled GitHub Actions workflow")
 
+    if not result.get("proposal_allowed") or result.get("preservation_blockers") or result.get("added_files") or result.get("removed_files"):
+        raise RuntimeError("Preservation gate requires manual review; no files written")
+
     touched: list[str] = []
     by_name = {doc.file_name: doc for doc in remote_documents}
 
     for file_name in result["changed_files"] + result["added_files"]:
         (repo_root / file_name).write_text(by_name[file_name].content, encoding="utf-8", newline="\n")
         touched.append(file_name)
-
-    for file_name in result["removed_files"]:
-        path = repo_root / file_name
-        if path.exists():
-            path.unlink()
-            touched.append(file_name)
 
     docs = _document_dicts(remote_documents)
     capture_date = datetime.now(timezone.utc).date().isoformat()
@@ -425,7 +552,9 @@ def main(argv: list[str] | None = None) -> int:
         previous = load_manifest(repo_root)
         result, remote_documents, llms_text, upstream_commit = audit(repo_root, token=token)
 
-        if args.write and result["changed"]:
+        if args.write and result["preservation_blockers"]:
+            raise RuntimeError("Preservation review required; refusing to regenerate any files")
+        if args.write and result["proposal_allowed"]:
             result["touched_files"] = apply_update(
                 repo_root,
                 previous,
@@ -440,9 +569,12 @@ def main(argv: list[str] | None = None) -> int:
         if args.json:
             print(json.dumps(result, indent=2, sort_keys=True))
         else:
-            state = "changes detected" if result["changed"] else "mirror current"
+            state = ("preservation review required" if result["preservation_blockers"]
+                     else "changes detected" if result["changed"] else "mirror current")
             print(f"AgentSkills.io sync check: {state}")
             print(f"Published pages: {result['published_document_count']}")
+            for blocker in result["preservation_blockers"]:
+                print(f"Review: {blocker}")
             if result["changed"]:
                 for key in ("changed_files", "added_files", "removed_files"):
                     if result[key]:

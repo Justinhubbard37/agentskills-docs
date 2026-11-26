@@ -9,6 +9,7 @@ on:
       - "sources.json"
       - "*.md"
       - "scripts/sync_agentskills.py"
+      - "tests/test_sync_preservation.py"
       - ".github/workflows/check-agentskills-upstream.yml"
   workflow_dispatch:
   schedule:
@@ -23,6 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       changed: ${{ steps.result.outputs.changed }}
+      proposal_allowed: ${{ steps.result.outputs.proposal_allowed }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -31,6 +33,9 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.x"
+
+      - name: Test preservation safeguards
+        run: python -m unittest discover -s tests -p "test_*.py"
 
       - name: Compare published documentation with local mirror
         id: check
@@ -49,12 +54,21 @@ jobs:
           result = json.loads(Path("sync-result.json").read_text(encoding="utf-8"))
           with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
               output.write(f"changed={str(bool(result['changed'])).lower()}\n")
+              output.write(f"proposal_allowed={str(result['proposal_allowed']).lower()}\n")
+          blockers = result["preservation_blockers"]
+          if blockers:
+              print("::warning::Preservation review required; automated proposal blocked.")
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as summary:
+              summary.write("## Preservation audit\n\n")
+              summary.write("**Proposal allowed:** " + str(result["proposal_allowed"]) + "\n\n")
+              for blocker in blockers:
+                  summary.write("- " + blocker + "\n")
           PY
 
   propose-update:
     name: Prepare review-gated update
     needs: check
-    if: github.event_name != 'pull_request' && needs.check.outputs.changed == 'true'
+    if: github.event_name != 'pull_request' && needs.check.outputs.proposal_allowed == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: write
