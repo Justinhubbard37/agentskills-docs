@@ -16,7 +16,8 @@ This is a **read-only AgentSkills.io documentation mirror for human-AI collabora
 | :--- | :--- |
 | **Source Domain** | [agentskills.io](https://agentskills.io) |
 | **Upstream Repository** | [agentskills/agentskills](https://github.com/agentskills/agentskills) |
-| **Upstream License** | Apache License 2.0 |
+| **Documentation license at capture** | [CC BY 4.0](./LICENSE-DOCS) (upstream `docs/LICENSE`) |
+| **Upstream root license** | [Apache 2.0](./LICENSE) |
 | **Retrieval Date** | September 6, 2026 |
 | **Scope Audit** | 9 canonical documentation pages (100% concordance across `llms.txt`, `/sitemap.xml`, and internal crawler) |
 | **Extraction Integrity** | Verbatim extraction from canonical `.md` endpoints. Zero summarization or synthetic rewrites. |
@@ -58,5 +59,10 @@ For automated RAG pipelines, pipeline indexing, and cache invalidation, refer to
 
 ## License & Attribution
 
-This documentation mirror is derived from the official [Agent Skills](https://agentskills.io) specification provided by the Agent Skills community.
-The source materials are licensed under the **Apache License 2.0**. See the [`LICENSE`](./LICENSE) file for complete license terms.
+This independent mirror reproduces material from the official [Agent Skills documentation](https://agentskills.io), credited to the Agent Skills project and its contributors. It is not an official publication or endorsement.
+
+- **Preserved September 6, 2026 snapshot:** the upstream [documentation license at capture](https://github.com/agentskills/agentskills/blob/69ef37e9424c0a7ea9dd2293b559e43ec8176379/docs/LICENSE) is Creative Commons Attribution 4.0 International ([CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)); the complete text is reproduced in [LICENSE-DOCS](./LICENSE-DOCS). The source URLs and capture commit are recorded in [sources.json](./sources.json). Local changes are limited to adding source headers and removing the non-substantive navigation banner.
+- **Repository tooling:** the existing [Apache 2.0 license](./LICENSE) is retained for this mirror's original automation and supporting code; it does not replace the upstream documentation license.
+- **Current upstream policy:** [Agent Skills governance](https://github.com/agentskills/agentskills/blob/main/GOVERNANCE.md), adopted November 4, 2026, specifies Apache 2.0 for code and specifications and CC BY 4.0 for other documentation. This is distinct from the license evidence for the September snapshot; no retroactive relicensing is asserted. Future specification updates must be reviewed against the applicable upstream license before acceptance.
+
+The upstream project identifies itself as Agent Skills, a Series of LF Projects, LLC. See the [upstream governance](https://github.com/agentskills/agentskills/blob/main/GOVERNANCE.md) and [project policies](https://www.lfprojects.org/policies/) for current governance and trademark information.

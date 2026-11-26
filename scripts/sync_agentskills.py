@@ -213,7 +213,10 @@ def build_manifest(
         "scope_source": LLMS_URL,
         "upstream_repository": UPSTREAM_REPOSITORY,
         "upstream_docs_commit_at_capture": upstream_docs_commit,
-        "upstream_license": previous.get("upstream_license", "Apache-2.0"),
+        "upstream_license": previous["upstream_license"],
+        "upstream_license_scope": previous["upstream_license_scope"],
+        "upstream_license_source": previous["upstream_license_source"],
+        "upstream_root_license": previous["upstream_root_license"],
         "extraction_method": "canonical_markdown_normalized",
         "normalization": {
             "source_header_added": True,
@@ -383,6 +386,8 @@ def preservation_gate(
     incoming = {doc.file_name: doc for doc in remote_documents}
     if metadata_mismatches:
         blockers.append("Local manifest integrity mismatch; do not overwrite the accepted snapshot.")
+    if before.get("docs/LICENSE") != after.get("docs/LICENSE") or before.get("docs/LICENSE") is None:
+        blockers.append("Documentation license evidence missing or changed; manual license review required.")
     for name in diff["removed"]:
         classifications[name] = "scope_removed"
         blockers.append(f"{name}: published page missing; deletion requires explicit review.")
@@ -431,6 +436,9 @@ def preservation_gate(
         elif not source_changed:
             classifications[name] = "uncorroborated_export_drift"
             blockers.append(f"{name}: export differs but upstream source is unchanged.")
+        elif name == "specification.md":
+            classifications[name] = "specification_license_review"
+            blockers.append(f"{name}: verify applicable specification license before accepting update.")
         elif name in DYNAMIC_PAGES:
             classifications[name] = "dynamic_export_review"
             blockers.append(f"{name}: source-backed dynamic page needs manual completeness review.")
