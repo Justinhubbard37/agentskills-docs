@@ -7,6 +7,8 @@ on:
       - "README.md"
       - "00-index.md"
       - "sources.json"
+      - "LICENSE"
+      - "LICENSE-DOCS"
       - "*.md"
       - "scripts/sync_agentskills.py"
       - "tests/test_sync_preservation.py"

@@ -13,12 +13,12 @@ class PreservationTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
-        self.name = "specification.md"
-        self.url = "https://agentskills.io/specification"
+        self.name = "skill-creation-quickstart.md"
+        self.url = "https://agentskills.io/skill-creation/quickstart"
         self.old = sync.normalize_markdown("# Specification\n\n## Rules\n\n" + "Existing rule. " * 40 + "\n", self.url)
         (self.root / self.name).write_text(self.old, encoding="utf-8")
         self.previous = {"documents": [{"file_name": self.name, "canonical_md_url": self.url + ".md"}]}
-        self.before = {"docs/specification.mdx": "a" * 40}
+        self.before = {"docs/skill-creation/quickstart.mdx": "a" * 40, "docs/LICENSE": "d" * 40}
         self.after = dict(self.before)
 
     def document(self, content):
@@ -28,7 +28,7 @@ class PreservationTests(unittest.TestCase):
         content = self.old if content is None else content
         doc = self.document(content)
         diff = sync.compute_diff(self.root, {self.name: content}, [self.name])
-        current = {"docs/specification.mdx": "b" * 40} if changed_source else self.after
+        current = {"docs/skill-creation/quickstart.mdx": "b" * 40, "docs/LICENSE": "d" * 40} if changed_source else self.after
         return sync.preservation_gate(self.root, self.previous, [doc], diff, metadata or [],
                                       self.before if before is None else before,
                                       current if after is None else after)
@@ -69,7 +69,7 @@ class PreservationTests(unittest.TestCase):
         self.assertEqual(result["preservation_classifications"][self.name], "source_evidence_missing")
 
     def test_local_integrity_mismatch(self):
-        result = self.gate(self.old + "New.\n", changed_source=True, metadata=["specification.md:local_sha256"])
+        result = self.gate(self.old + "New.\n", changed_source=True, metadata=["skill-creation-quickstart.md:local_sha256"])
         self.assertFalse(result["proposal_allowed"])
 
     def test_removed_page(self):
@@ -88,7 +88,7 @@ class PreservationTests(unittest.TestCase):
         doc = self.document(self.old + "New.\n")
         diff = {"changed": [self.name], "added": [], "removed": ["clients.md"]}
         result = sync.preservation_gate(self.root, self.previous, [doc], diff, [], self.before,
-                                       {"docs/specification.mdx": "b" * 40})
+                                       {"docs/skill-creation/quickstart.mdx": "b" * 40, "docs/LICENSE": "d" * 40})
         self.assertEqual(result["preservation_classifications"][self.name], "source_backed_candidate")
         self.assertFalse(result["proposal_allowed"])
 
@@ -100,7 +100,7 @@ class PreservationTests(unittest.TestCase):
                 (self.root / name).write_text(old, encoding="utf-8")
                 previous = {"documents": [{"file_name": name, "canonical_md_url": url + ".md"}]}
                 doc = sync.RemoteDocument("Clients", "", url + ".md", url, name, old + "New client.\n")
-                before = {"docs/" + name[:-3] + ".mdx": "a" * 40, "docs/snippets/clients.jsx": "b" * 40}
+                before = {"docs/" + name[:-3] + ".mdx": "a" * 40, "docs/snippets/clients.jsx": "b" * 40, "docs/LICENSE": "d" * 40}
                 after = {**before, "docs/snippets/clients.jsx": "c" * 40}
                 result = sync.preservation_gate(self.root, previous, [doc],
                     {"changed": [name], "added": [], "removed": []}, [], before, after)
@@ -114,6 +114,24 @@ class PreservationTests(unittest.TestCase):
                 sync.apply_update(self.root, self.previous, [self.document(self.old + "New.\n")],
                                   "", "b" * 40, {"proposal_allowed": False})
         self.assertEqual(before, {p.name: p.read_bytes() for p in self.root.iterdir()})
+
+    def test_license_change_blocks_proposal(self):
+        result = self.gate(self.old + "New.\n", after={**self.before, "docs/LICENSE": "e" * 40})
+        self.assertFalse(result["proposal_allowed"])
+        self.assertTrue(any("license evidence" in reason for reason in result["preservation_blockers"]))
+
+    def test_specification_change_requires_license_review(self):
+        name = "specification.md"
+        url = "https://agentskills.io/specification"
+        (self.root / name).write_text(self.old, encoding="utf-8")
+        doc = sync.RemoteDocument("Specification", "", url + ".md", url, name, self.old + "New.\n")
+        previous = {"documents": [{"file_name": name, "canonical_md_url": url + ".md"}]}
+        before = {"docs/specification.mdx": "a" * 40, "docs/LICENSE": "d" * 40}
+        result = sync.preservation_gate(self.root, previous, [doc],
+            {"changed": [name], "added": [], "removed": []}, [], before,
+            {**before, "docs/specification.mdx": "b" * 40})
+        self.assertFalse(result["proposal_allowed"])
+        self.assertEqual(result["preservation_classifications"][name], "specification_license_review")
 
     def test_colliding_local_filenames_fail(self):
         with self.assertRaisesRegex(RuntimeError, "collide"):
