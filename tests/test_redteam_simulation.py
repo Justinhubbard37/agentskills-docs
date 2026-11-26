@@ -60,3 +60,58 @@ class Simulation(unittest.TestCase):
                 passed=(allowed==expected and touched==expected and not outside_changed and (not expected or error is None))
                 print("REDTEAM "+json.dumps(dict(case=label,expected=expected,allowed=allowed,writes=touched,outside_changed=outside_changed,error=error,passed=passed)),flush=True)
         # Observational test: findings are reported individually, not hidden by an early assertion.
+
+    def test_deeper_boundaries(self):
+        def probe(label, fn):
+            try:
+                outcome=fn()
+                print("ROUND2 "+json.dumps({"case":label,"outcome":outcome}),flush=True)
+            except Exception as exc:
+                print("ROUND2 "+json.dumps({"case":label,"error":type(exc).__name__}),flush=True)
+        def path_check(value):
+            try: return {"accepted":s.local_filename(value)}
+            except (RuntimeError,ValueError): return {"rejected":True}
+        for label,value in [
+            ("parent_path","https://agentskills.io/../outside.md"),
+            ("encoded_path","https://agentskills.io/%2e%2e/outside.md"),
+            ("reserved_readme","https://agentskills.io/readme.md"),
+            ("reserved_agents","https://agentskills.io/agents.md"),
+            ("windows_device","https://agentskills.io/con.md"),
+            ("query_path","https://agentskills.io/page?x=.md")]:
+            probe(label,lambda value=value:path_check(value))
+        def tree_duplicate():
+            payload={"truncated":False,"tree":[{"path":"docs/a.mdx","type":"blob","sha":"a"*40},{"path":"docs/a.mdx","type":"blob","sha":"b"*40}]}
+            with patch.object(s,"_request_text",return_value=json.dumps(payload)):
+                return s.fetch_upstream_tree("c"*40)
+        probe("duplicate_tree_entries",tree_duplicate)
+        def metadata_fence():
+            doc={"title":"Fixture | Extra","source_url":"https://agentskills.io/a","file_name":"a.md"}
+            output=s.build_index([doc],"fixture\n```\nUNTRUSTED_FIXTURE_MARKER\n```")
+            return {"unescaped_table_separator":"Fixture | Extra" in output,"raw_fence_break":"```\nUNTRUSTED_FIXTURE_MARKER" in output}
+        probe("index_structure_integrity",metadata_fence)
+        def write_guard():
+            with tempfile.TemporaryDirectory() as d:
+                root=Path(d)
+                with patch.dict(os.environ,{"GITHUB_ACTIONS":"false","AGENTSKILLS_SYNC_WRITE":"1"}):
+                    try: s.apply_update(root,{},[],"","a"*40,{"proposal_allowed":True})
+                    except RuntimeError: return {"blocked":True,"files":len(list(root.iterdir()))}
+                return {"blocked":False}
+        probe("write_without_actions",write_guard)
+        def partial_write():
+            with tempfile.TemporaryDirectory() as d:
+                root=Path(d); name="a.md"; url="https://agentskills.io/a"
+                (root/name).write_text("old")
+                doc=s.RemoteDocument("A","",url+".md",url,name,"new")
+                previous={"upstream_license":"CC-BY-4.0","upstream_license_scope":"docs","upstream_license_source":"fixture","upstream_root_license":"Apache-2.0"}
+                original=Path.write_text
+                def fail_manifest(self,*args,**kwargs):
+                    if self.name=="sources.json": raise OSError("simulated disk failure")
+                    return original(self,*args,**kwargs)
+                with patch.dict(os.environ,{"GITHUB_ACTIONS":"true","AGENTSKILLS_SYNC_WRITE":"1"}),patch.object(Path,"write_text",fail_manifest):
+                    try: s.apply_update(root,previous,[doc],"","a"*40,{"proposal_allowed":True,"changed_files":[name],"added_files":[],"removed_files":[]})
+                    except OSError: return {"document_changed":(root/name).read_text()!="old","manifest_exists":(root/"sources.json").exists()}
+        probe("disk_failure_atomicity",partial_write)
+        def malformed_index():
+            valid="- [A](https://agentskills.io/a.md): fixture"
+            return {"parsed_count":len(s.parse_llms(valid+"\n- [B](https://agentskills.io/b.md)"))}
+        probe("malformed_index_entry",malformed_index)
